@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ticket System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<h2>Ticket Preparation</h2>
+
+<select id="category"></select>
+<select id="dateFolder"></select>
+<input id="requester" placeholder="Requester">
+<input id="count" type="number" min="1" value="1">
+<button onclick="prepareTickets()">Prepare</button>
+
+<div id="availableMsg"></div>
+<div id="resultMsg"></div>
+<div id="logPanel"></div>
+
+<script>
+const WORKER_URL = "https://YOUR-NAME.workers.dev";
+const GAS_URL = "https://script.google.com/macros/s/YOUR_GAS_ID/exec";
+
+async function callAPI(action, params = {}) {
+  const payload = {
+    targetApi: GAS_URL,
+    params: { action, ...params }
+  };
+
+  const encoded = btoa(JSON.stringify(payload));
+  const url = `${WORKER_URL}?data=${encodeURIComponent(encoded)}`;
+
+  const res = await fetch(url);
+  return await res.json();
+}
+
+/* =====================
+   UI LOGIC
+===================== */
+
+async function loadCategories() {
+  const cats = await callAPI("getCategories");
+  const sel = document.getElementById("category");
+  sel.innerHTML = `<option value="">Select</option>`;
+  cats.forEach(c => {
+    const o = document.createElement("option");
+    o.value = c.id;
+    o.textContent = c.name;
+    sel.appendChild(o);
+  });
+}
+
+async function loadDates() {
+  const id = category.value;
+  const dates = await callAPI("getDateFolders", { categoryId: id });
+  dateFolder.innerHTML = `<option value="">Select</option>`;
+  dates.forEach(d => {
+    const o = document.createElement("option");
+    o.value = d.id;
+    o.textContent = `${d.name} (${d.available})`;
+    dateFolder.appendChild(o);
+  });
+}
+
+async function prepareTickets() {
+  const res = await callAPI("prepareTickets", {
+    categoryId: category.value,
+    dateFolderId: dateFolder.value,
+    requester: requester.value,
+    count: count.value
+  });
+
+  resultMsg.innerHTML = res.success
+    ? `✅ ${res.message}<br><a href="${res.zipUrl}" target="_blank">Download</a>`
+    : `❌ ${res.message}`;
+}
+
+category.onchange = loadDates;
+loadCategories();
+</script>
+
+</body>
+</html>
